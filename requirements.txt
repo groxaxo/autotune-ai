@@ -25,7 +25,6 @@ pyloudnorm>=0.1.0
 # Workflow and utilities
 snakemake>=7.32.0
 pyyaml>=6.0
-argparse
 
 # Development and testing
 pytest>=7.4.0

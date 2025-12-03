@@ -123,18 +123,19 @@ def de_ess(y, sr, freq=5000, q=0.7, gain_db=-6.0):
         threshold = np.percentile(envelope_smooth, 70)
         
         # Create gain reduction mask
-        gain_reduction = np.ones_like(y)
+        gain_multiplier = np.ones_like(y)
         sibilant_mask = envelope_smooth > threshold
         
         if np.any(sibilant_mask):
-            gain_linear = 10 ** (gain_db / 20)
-            gain_reduction[sibilant_mask] = gain_linear
+            # Convert negative dB to gain multiplier (e.g., -6dB -> 0.5x)
+            attenuation = 10 ** (gain_db / 20)  # This will be < 1 for negative gain_db
+            gain_multiplier[sibilant_mask] = attenuation
             
             # Smooth gain changes
-            gain_reduction = uniform_filter1d(gain_reduction, size=int(sr * 0.005))  # 5ms
+            gain_multiplier = uniform_filter1d(gain_multiplier, size=int(sr * 0.005))  # 5ms
             
             # Apply gain reduction
-            y_deessed = y * gain_reduction
+            y_deessed = y * gain_multiplier
             
             logger.info(f'De-essing applied to {np.sum(sibilant_mask)} samples')
             return y_deessed

@@ -140,7 +140,7 @@ def main():
     # Setup output directories
     output_dir = Path(__file__).parent / 'output'
     work_dir = output_dir / 'work'
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate test audio
     print('\n1. Generating synthetic audio...')
