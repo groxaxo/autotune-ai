@@ -1,0 +1,503 @@
+I've created the full project skeleton (scripts, `requirements.txt`, and `Snakefile`) in a canvas titled **Autotune-agent — Code Skeletons**. Open that document to view, copy, or download each file.
+### Enhanced Autotune-Agent Code Skeletons with Detailed TODOs
+
+As a helpful guide for implementing this autotune solution, I'll start with the main point: I've enhanced the previously provided code skeletons by adding more detailed TODO comments in each relevant section. These details include specific implementation steps, library usage examples, error handling suggestions, and references to best practices. This will make it easier for your coding agent (or you) to fill in the gaps step-by-step without assuming prior knowledge.
+
+The enhancements focus on:
+- Clarifying what each TODO requires.
+- Suggesting specific functions or methods from the imported libraries.
+- Adding notes on potential edge cases, like handling noisy audio or mismatched sample rates.
+- Ensuring the pipeline remains modular and testable.
+
+I've kept the overall structure the same, but updated the files with these richer TODOs. Copy these into your repository as before. Remember to install dependencies from `requirements.txt` and test incrementally (e.g., start with the fast pipeline).
+
+#### requirements.txt
+(No changes needed here, as it's already comprehensive. If you encounter missing packages during implementation, note that the environment limits additions—stick to the listed ones.)
+
+#### scripts/utils.py
+(No major TODOs here; this is mostly utility code. No changes.)
+
+#### scripts/separate.py
+```python
+"""Wrapper around a source separation tool (Demucs / Spleeter).
+Outputs separated stems (vocal, instrumental) to --output directory.
+"""
+import argparse
+import logging
+from pathlib import Path
+from utils import ensure_dir, read_wav, write_wav
+
+logger = logging.getLogger(__name__)
+
+def run_demucs(input_path: str, out_dir: str, model: str = 'demucs'):  # placeholder
+    # TODO: Integrate actual Demucs Python API for high-quality separation.
+    # Step 1: Import Demucs: from demucs import pretrained; separator = pretrained.get_model('mdx_extra')
+    # Step 2: Load audio: import torchaudio; waveform, sr = torchaudio.load(input_path)
+    # Step 3: Apply separation: sources = separator(waveform)
+    # Step 4: Extract vocal and instrumental: vocal = sources[0]; instr = sum(sources[1:])  # Assuming vocals are first stem
+    # Step 5: Save outputs: torchaudio.save(vocal_path, vocal, sr); torchaudio.save(instr_path, instr, sr)
+    # Edge case: Handle mono/stereo conversion if input is mono (e.g., waveform = waveform.repeat(2, 1) if waveform.shape[0] == 1)
+    # Error handling: If separation fails (e.g., GPU out of memory), fallback to Spleeter or log warning and copy input as vocal.
+    # Best practice: Use GPU if available: separator = separator.cuda() if torch.cuda.is_available() else separator
+    logger.info('Running Demucs (placeholder)')
+    # Placeholder: copy input to vocal.wav
+    from shutil import copyfile
+    ensure_dir(out_dir)
+    vocal_path = Path(out_dir) / 'vocal.wav'
+    instr_path = Path(out_dir) / 'instr.wav'
+    copyfile(input_path, vocal_path)
+    copyfile(input_path, instr_path)  # Dummy instrumental
+    return str(vocal_path), str(instr_path)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', '-i', required=True)
+    parser.add_argument('--out_dir', '-d', required=True)
+    parser.add_argument('--model', default='demucs')
+    args = parser.parse_args()
+    vocal, instr = run_demucs(args.input, args.out_dir, args.model)
+    logger.info(f'Vocal stem: {vocal}')
+    logger.info(f'Instr stem: {instr}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### scripts/preprocess.py
+```python
+"""Preprocess audio: denoising, VAD, and optional time alignment.
+Outputs cleaned vocal wav.
+"""
+import argparse
+import logging
+import numpy as np
+from utils import read_wav, write_wav
+
+logger = logging.getLogger(__name__)
+
+def denoise(y, sr):
+    # TODO: Integrate noisereduce for effective denoising.
+    # Step 1: Import: import noisereduce as nr
+    # Step 2: Apply reduction: reduced = nr.reduce_noise(y=y, sr=sr, prop_decrease=0.8)  # Adjust prop_decrease for aggressiveness
+    # Edge case: If audio is very short (<1s), skip or use stationary=True for stationary noise assumption
+    # Best practice: Normalize audio first: y = y / np.max(np.abs(y)) to avoid clipping post-denoise
+    logger.info('Denoising (placeholder)')
+    return y
+
+def apply_vad(y, sr):
+    # TODO: Integrate webrtcvad for voice activity detection.
+    # Step 1: Import: import webrtcvad
+    # Step 2: Create VAD: vad = webrtcvad.Vad(mode=3)  # Mode 3 is aggressive
+    # Step 3: Process in frames (e.g., 30ms frames): for each frame, if vad.is_speech(frame_bytes, sr), keep it; else zero or remove
+    # Step 4: Reassemble audio from voiced frames
+    # Edge case: Handle sample rates not supported by webrtcvad (resample to 16kHz if needed using librosa.resample)
+    # Best practice: Add padding to frames and smooth transitions to avoid clicks
+    logger.info('Applying VAD (placeholder)')
+    return y
+
+def align_to_backing(vocal_y, backing_y, sr):
+    # TODO: Implement time alignment using cross-correlation or DTW.
+    # Step 1: Import: import librosa
+    # Step 2: Compute onset envelopes: vocal_onset = librosa.onset.onset_strength(y=vocal_y, sr=sr)
+    # backing_onset = librosa.onset.onset_strength(y=backing_y, sr=sr)
+    # Step 3: Find offset: offset = np.argmax(np.correlate(vocal_onset, backing_onset, mode='full')) - len(vocal_onset) + 1
+    # Step 4: Shift vocal: if offset > 0, pad start; else trim start (use np.pad or slicing)
+    # Edge case: If lengths differ greatly, align only a segment (e.g., first 30s)
+    # Best practice: Use dynamic time warping (DTW) from librosa.sequence.dtw for non-linear alignment if simple correlation fails
+    logger.info('Aligning (placeholder)')
+    return vocal_y
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--vocal', '-v', required=True)
+    parser.add_argument('--backing', '-b', default=None)
+    parser.add_argument('--output', '-o', required=True)
+    parser.add_argument('--align', action='store_true')
+    parser.add_argument('--sr', type=int, default=44100)
+    args = parser.parse_args()
+    y, sr = read_wav(args.vocal)
+    y = denoise(y, sr)
+    y = apply_vad(y, sr)
+    if args.align and args.backing:
+        backing_y, _ = read_wav(args.backing)
+        y = align_to_backing(y, backing_y, sr)
+    write_wav(args.output, y, sr)
+    logger.info(f'Preprocessed audio saved to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### scripts/extract_pitch.py
+```python
+"""F0 extraction script. Uses CREPE if available, otherwise falls back to librosa.pyin.
+Saves arrays to an NPZ file with keys: times, f0_hz, voiced_prob
+"""
+import argparse
+import logging
+import numpy as np
+from utils import read_wav, save_npz
+
+logger = logging.getLogger(__name__)
+
+def extract_f0_crepe(y, sr, hop_length=160):
+    # TODO: Integrate CREPE for deep-learning-based pitch detection.
+    # Step 1: Import: import crepe
+    # Step 2: Predict: time, f0, confidence, activation = crepe.predict(y, sr, viterbi=True, step_size=hop_length/sr*1000)  # step_size in ms
+    # Step 3: Set voiced where confidence > 0.5, else f0=0
+    # Edge case: If GPU available, use model_capacity='full' for better accuracy; else 'tiny'
+    # Best practice: Smooth f0 with a median filter (e.g., from scipy.signal.medfilt(f0, kernel_size=3))
+    N = int(len(y) / hop_length) + 1
+    times = np.arange(N) * (hop_length / sr)
+    return times, np.zeros(N), np.zeros(N)  # Placeholder
+
+def extract_f0_librosa(y, sr, hop_length=512):
+    import librosa
+    f0, voiced_flag, voiced_probs = librosa.pyin(y, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'), sr=sr, frame_length=2048, hop_length=hop_length)
+    times = librosa.frames_to_time(np.arange(len(f0)), sr=sr, hop_length=hop_length)
+    f0 = np.nan_to_num(f0)
+    return times, f0, voiced_probs
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', '-i', required=True)
+    parser.add_argument('--output', '-o', required=True)
+    parser.add_argument('--sr', type=int, default=44100)
+    parser.add_argument('--method', choices=['crepe', 'librosa'], default='crepe')
+    args = parser.parse_args()
+    y, sr = read_wav(args.input)
+    if args.method == 'crepe':
+        try:
+            times, f0, voiced = extract_f0_crepe(y, sr)
+        except Exception:
+            logger.warning('CREPE failed, falling back to librosa')
+            times, f0, voiced = extract_f0_librosa(y, sr)
+    else:
+        times, f0, voiced = extract_f0_librosa(y, sr)
+    save_npz(args.output, times=times, f0_hz=f0, voiced_prob=voiced)
+    logger.info(f'Saved F0 to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### scripts/infer_target_pitch.py
+```python
+"""Given an extracted F0 contour and an optional detected key/scale, produce a target F0 contour.
+Two modes: heuristic (fast) and model (require checkpoint).
+"""
+import argparse
+import logging
+import numpy as np
+from utils import load_npz, save_npz
+
+logger = logging.getLogger(__name__)
+
+SCALES = {
+    'major': [0, 2, 4, 5, 7, 9, 11],
+    'minor': [0, 2, 3, 5, 7, 8, 10],
+}
+
+def midi_from_hz(hz):
+    return 69 + 12 * np.log2(hz / 440.0)
+
+def hz_from_midi(midi):
+    return 440.0 * 2 ** ((midi - 69) / 12.0)
+
+def heuristic_map(f0_hz, voiced, root_midi=60, scale='major'):
+    midi = midi_from_hz(np.maximum(f0_hz, 1e-6))
+    residual = midi - np.round(midi)
+    scale_set = set(SCALES.get(scale, SCALES['major']))
+    mapped_midi = np.full_like(midi, 0.0)
+    for i in range(len(midi)):
+        if voiced[i]:
+            semitone = round(midi[i])
+            candidates = range(semitone - 12, semitone + 13)
+            nearest = min(candidates, key=lambda c: abs(c - midi[i]) if ((c - root_midi) % 12) in scale_set else float('inf'))
+            mapped_midi[i] = nearest
+        else:
+            mapped_midi[i] = midi[i]
+    final_midi = mapped_midi + residual * 0.25  # Preserve partial vibrato
+    return hz_from_midi(final_midi)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--f0_npz', required=True)
+    parser.add_argument('--output', '-o', required=True)
+    parser.add_argument('--mode', choices=['heuristic', 'model'], default='heuristic')
+    parser.add_argument('--root_midi', type=int, default=60)
+    parser.add_argument('--scale', choices=['major', 'minor'], default='major')
+    parser.add_argument('--model_ckpt', default=None)
+    args = parser.parse_args()
+    data = load_npz(args.f0_npz)
+    f0 = data['f0_hz']
+    voiced = data['voiced_prob'] > 0.5
+    times = data['times']
+    if args.mode == 'heuristic':
+        target_f0 = heuristic_map(f0, voiced, args.root_midi, args.scale)
+    else:
+        # TODO: Integrate model prediction from models/pitch_predictor/predict.py.
+        # Step 1: Import: from models.pitch_predictor.predict import predict
+        # Step 2: Call: target_f0 = predict(args.model_ckpt, f0, voiced, times)  # Assume predict returns corrected f0 array
+        # Step 3: Blend with heuristic if confidence low (e.g., if model outputs confidence, blend where <0.7)
+        # Edge case: If checkpoint missing, raise ValueError and suggest training first
+        # Best practice: Preprocess inputs (e.g., normalize f0 to log scale) before model inference
+        target_f0 = f0  # Placeholder
+    save_npz(args.output, times=times, f0_hz=target_f0, voiced_prob=data['voiced_prob'])
+    logger.info(f'Wrote target F0 to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### scripts/correct_pitch.py
+```python
+"""Apply pitch correction using WORLD vocoder or PSOLA fallback.
+Inputs: original vocal wav, target npz (times, f0_hz)
+"""
+import argparse
+import logging
+import numpy as np
+from utils import read_wav, write_wav, load_npz
+
+logger = logging.getLogger(__name__)
+
+def correct_with_world(y, sr, times_target, f0_target):
+    import pyworld as pw
+    # Decompose
+    _f0, t = pw.dio(y.astype(np.float64), sr)
+    _f0 = pw.stonemask(y.astype(np.float64), _f0, t, sr)
+    sp = pw.cheaptrick(y.astype(np.float64), _f0, t, sr)
+    ap = pw.d4c(y.astype(np.float64), _f0, t, sr)
+    # Interpolate target F0 to match WORLD times
+    f0_new = np.interp(t, times_target, f0_target, left=0, right=0)
+    # Synthesize
+    y_synth = pw.synthesize(f0_new, sp, ap, sr)
+    return y_synth
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--vocal', '-v', required=True)
+    parser.add_argument('--target_npz', required=True)
+    parser.add_argument('--output', '-o', required=True)
+    parser.add_argument('--sr', type=int, default=44100)
+    args = parser.parse_args()
+    y, sr = read_wav(args.vocal)
+    data = load_npz(args.target_npz)
+    try:
+        y_out = correct_with_world(y, sr, data['times'], data['f0_hz'])
+    except Exception as e:
+        # TODO: Implement PSOLA fallback for pitch shifting if WORLD fails.
+        # Step 1: Import: import librosa
+        # Step 2: Compute shift factors: shift = data['f0_hz'] / original_f0  # Need to extract original_f0 similarly
+        # Step 3: Apply: y_out = librosa.effects.pitch_shift(y, sr=sr, n_steps=np.mean(shift * 12))  # Average shift in semitones
+        # Edge case: For large shifts (>12 semitones), apply in stages to reduce artifacts
+        # Best practice: Preserve formants with formant_shift=1.0 in pitch_shift
+        logger.warning(f'WORLD failed: {e}, falling back to PSOLA')
+        y_out = y
+    write_wav(args.output, y_out, sr)
+    logger.info(f'Wrote corrected vocal to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### scripts/postprocess.py
+```python
+"""Post-processing: loudness normalization, de-essing, simple EQ, and mixing back with backing track.
+"""
+import argparse
+import logging
+import numpy as np
+from utils import read_wav, write_wav
+
+logger = logging.getLogger(__name__)
+
+def normalize_lufs(y, sr, target_lufs=-14.0):
+    # TODO: Integrate pyloudnorm for LUFS normalization (note: may need to add to requirements if allowed, or approximate with RMS).
+    # Step 1: Import: import pyloudnorm as pyln
+    # Step 2: Create meter: meter = pyln.Meter(sr)
+    # Step 3: Measure: loudness = meter.integrated_loudness(y)
+    # Step 4: Apply gain: gain_db = target_lufs - loudness; y = y * (10 ** (gain_db / 20))
+    # Edge case: Prevent clipping: y = np.clip(y, -1.0, 1.0)
+    # Best practice: Use block_size=0.4 for accurate measurement
+    return y
+
+def de_ess(y, sr):
+    # TODO: Implement simple de-essing with high-shelf filter.
+    # Step 1: Import: from scipy.signal import butter, sosfilt
+    # Step 2: Design filter: sos = butter(2, [5000/sr/2, 1], btype='highshelf', output='sos')  # Attenuate >5kHz
+    # Step 3: Apply: y_ess = sosfilt(sos, y); blend with original based on threshold
+    # Edge case: Detect sibilance dynamically (e.g., high-frequency energy > threshold)
+    # Best practice: Use compressor on high freqs: from audioread or custom compressor
+    return y
+
+def mix_vocal_backing(vocal_y, backing_y, vocal_gain_db=0.0):
+    min_len = min(len(vocal_y), len(backing_y))
+    vocal_y = vocal_y[:min_len] * (10 ** (vocal_gain_db / 20.0))
+    return backing_y[:min_len] + vocal_y
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--vocal', '-v', required=True)
+    parser.add_argument('--backing', '-b', required=True)
+    parser.add_argument('--output', '-o', required=True)
+    parser.add_argument('--vocal_gain_db', type=float, default=0.0)
+    parser.add_argument('--sr', type=int, default=44100)
+    args = parser.parse_args()
+    vocal_y, sr = read_wav(args.vocal)
+    backing_y, _ = read_wav(args.backing)
+    vocal_y = normalize_lufs(vocal_y, sr)
+    vocal_y = de_ess(vocal_y, sr)
+    mixed = mix_vocal_backing(vocal_y, backing_y, args.vocal_gain_db)
+    write_wav(args.output, mixed, sr)
+    logger.info(f'Postprocessed and mixed audio saved to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### scripts/run_pipeline.py
+(No major TODOs; this orchestrates the scripts. Added a note for optional dry_run flag if needed.)
+
+#### models/pitch_predictor/model.py
+```python
+"""PyTorch model for pitch prediction."""
+import torch
+import torch.nn as nn
+
+class PitchPredictor(nn.Module):
+    def __init__(self, input_dim=128, hidden_dim=256):
+        super().__init__()
+        # TODO: Define full CNN + Transformer architecture.
+        # Step 1: CNN front-end: self.cnn_backing = nn.Conv1d(in_channels=80, out_channels=hidden_dim, kernel_size=3)  # For mel-spec
+        # self.cnn_vocal = nn.Conv1d(...) similar
+        # Step 2: Transformer: self.transformer = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=8), num_layers=4)
+        # Step 3: Output heads: self.f0_head = nn.Linear(hidden_dim, 1); self.voicing_head = nn.Linear(hidden_dim, 1); self.residual_head = nn.Linear(hidden_dim, 1)
+        # Edge case: Add positional encoding: from torch.nn import PositionalEncoding
+        # Best practice: Use dropout=0.1 in layers for regularization
+        self.fc_out = nn.Linear(hidden_dim, 1)  # Output F0
+
+    def forward(self, mel_backing, mel_vocal, f0_est):
+        # TODO: Implement forward pass with fusion.
+        # Step 1: Extract features: backing_feat = self.cnn_backing(mel_backing); vocal_feat = self.cnn_vocal(mel_vocal)
+        # Step 2: Concat or cross-attend: fused = torch.cat([backing_feat, vocal_feat, f0_est.unsqueeze(-1)], dim=-1)
+        # Step 3: Transformer: encoded = self.transformer(fused)
+        # Step 4: Heads: f0_pred = self.f0_head(encoded).squeeze(); etc.
+        # Best practice: Mask unvoiced frames during loss computation
+        return torch.zeros_like(f0_est)  # Placeholder
+
+if __name__ == '__main__':
+    print('Model definition - not runnable')
+```
+
+#### models/pitch_predictor/train.py
+```python
+"""Training script for pitch predictor model."""
+import argparse
+import logging
+import torch
+from model import PitchPredictor
+
+logger = logging.getLogger(__name__)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_dir', required=True)
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--lr', type=float, default=1e-4)
+    args = parser.parse_args()
+
+    model = PitchPredictor()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    # TODO: Implement dataset loading and training loop.
+    # Step 1: Create dataset: from torch.utils.data import Dataset, DataLoader; class PitchDataset(Dataset): ... load pairs from data_dir (e.g., detuned.wav, target.npz)
+    # Step 2: Losses: f0_loss = nn.MSELoss(); voicing_loss = nn.BCELoss(); perceptual_loss = ... (e.g., using pre-trained CREPE)
+    # Step 3: Loop: for epoch in range(args.epochs): for batch in dataloader: preds = model(batch); loss = f0_loss + ...; optimizer.step()
+    # Step 4: Validation: Use held-out set, compute RMSE in cents: 1200 * log2(pred / gt)
+    # Edge case: Augment data with pitch shifts (e.g., librosa.effects.pitch_shift on clean vocals)
+    # Best practice: Use scheduler: from torch.optim.lr_scheduler import CosineAnnealingLR; early stopping on val loss
+    for epoch in range(args.epochs):
+        # Train step placeholder
+        logger.info(f'Epoch {epoch}: training...')
+
+    torch.save(model.state_dict(), 'best.pt')
+    logger.info('Training complete')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### models/pitch_predictor/predict.py
+```python
+"""Inference script for pitch predictor."""
+import argparse
+import logging
+import torch
+import numpy as np
+from model import PitchPredictor
+
+logger = logging.getLogger(__name__)
+
+def predict(ckpt_path, f0_est, voiced, times):
+    model = PitchPredictor()
+    model.load_state_dict(torch.load(ckpt_path))
+    model.eval()
+    # TODO: Prepare inputs and run inference.
+    # Step 1: Compute mel-spectrograms: import torchaudio.transforms as T; mel_transform = T.MelSpectrogram()
+    # mel_vocal = mel_transform(vocal_y)  # Need vocal audio here; perhaps pass as arg
+    # Step 2: To tensor: inputs = torch.from_numpy(np.stack([mel_backing, mel_vocal, f0_est])).unsqueeze(0)  # Batch dim
+    # Step 3: Infer: with torch.no_grad(): out = model(inputs); target_f0 = out.squeeze().numpy()
+    # Edge case: Handle variable lengths with padding/masking
+    # Best practice: Use GPU if available: model.cuda(); inputs.cuda()
+    return np.zeros_like(f0_est)  # Placeholder target F0
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ckpt', required=True)
+    parser.add_argument('--f0_npz', required=True)
+    parser.add_argument('--output', required=True)
+    args = parser.parse_args()
+    # TODO: Load npz, call predict, save output npz.
+    # Step 1: data = load_npz(args.f0_npz)
+    # Step 2: target = predict(args.ckpt, data['f0_hz'], data['voiced_prob'] > 0.5, data['times'])
+    # Step 3: save_npz(args.output, times=data['times'], f0_hz=target, voiced_prob=data['voiced_prob'])
+    logger.info(f'Predicted F0 saved to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### models/vocoder/convert.py
+```python
+"""Vocoder conversion utils, e.g., for HiFi-GAN."""
+import argparse
+import logging
+import torch
+
+logger = logging.getLogger(__name__)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', required=True)  # e.g., spectral envelope from WORLD
+    parser.add_argument('--output', required=True)
+    args = parser.parse_args()
+    # TODO: Integrate HiFi-GAN for neural vocoding.
+    # Step 1: Load pre-trained: from hifigan.env import AttrDict; from hifigan.models import Generator; config = AttrDict(...); generator = Generator(config)
+    # generator.load_state_dict(torch.hub.load_state_dict_from_url('url_to_checkpoint'))
+    # Step 2: Convert input (e.g., mel from WORLD sp): mel = some_conversion(sp)
+    # Step 3: Generate: with torch.no_grad(): y = generator(mel)
+    # Step 4: Save: torchaudio.save(args.output, y, sr)
+    # Edge case: Condition on f0 if model supports (e.g., add f0 as input channel)
+    # Best practice: Remove eval mode artifacts with generator.remove_weight_norm()
+    logger.info(f'Vocoded audio saved to {args.output}')
+
+if __name__ == '__main__':
+    main()
+```
+
+#### Snakefile
+(No changes; the DAG is already set up. If needed, add params for modes in rules.)
+
+This should give you a clearer path to implementation. Start by filling in one script at a time (e.g., separate.py), test it standalone, then integrate. If you need help with a specific TODO or examples, let me know!
