@@ -1,0 +1,274 @@
+Here's a clear, actionable TODO list your coding agent can follow. Each item includes the objective, files to change/create, exact commands to run or test, expected inputs/outputs, and acceptance criteria. Follow items in order (top = highest priority) or run in parallel when your agent can.
+
+---
+
+# Top-level priorities
+
+1. **Make the fast pipeline end-to-end (MVP).**
+2. **Add robustness: denoise, VAD, alignment, artifact checks.**
+3. **Add model training/inference stubs and dataset augmentation.**
+4. **CI, Docker, Snakemake integration, tests, and docs.**
+
+---
+
+# 1 — Repo & environment bootstrap
+
+Objective: ensure developer can run scripts locally and in Docker.
+
+Tasks
+
+* Create `docker/Dockerfile` with CUDA PyTorch base, python deps from `requirements.txt`.
+
+  * Files: `docker/Dockerfile`
+  * Command to build locally: `docker build -t autotune-agent:latest docker/`
+  * Acceptance: container builds without errors and `python --version` runs inside container.
+* Create `configs/config.yaml` with placeholder tracks list.
+
+  * Files: `configs/config.yaml`
+  * Example content:
+
+    ```yaml
+    tracks:
+      - example1
+    ```
+* Add `.gitignore` (exclude `data/`, `results/`, `models/checkpoints/`).
+
+Quick checks
+
+* Run: `docker run --rm -v $(pwd):/work autotune-agent:latest python -c "import sys,torch; print('OK', sys.version)"`
+* Acceptance: prints OK and no import errors.
+
+---
+
+# 2 — Fast pipeline: glue real tools into skeleton
+
+Objective: make `run_pipeline.py` produce a final mix from example inputs using real components.
+
+Tasks (implement in order)
+
+* Integrate Demucs CLI into `scripts/separate.py`.
+
+  * Replace placeholder copy with shell invocation: `demucs --two-stems --model=htdemucs --out {out_dir} {input}`
+  * Test: `python scripts/separate.py --input examples/backing.wav --out_dir data/sep/example`
+  * Output: `data/sep/example/vocal.wav` and `instr.wav`.
+  * Acceptance: output files exist and are readable.
+* Implement `scripts/extract_pitch.py` fallback: prefer CREPE if installed, else `librosa.pyin`.
+
+  * Test CREPE: `python scripts/extract_pitch.py -i data/sep/example/vocal.wav -o data/f0/example.npz --method crepe`
+  * Acceptance: file `data/f0/example.npz` contains `times`, `f0_hz`, and `voiced_prob`.
+* Implement WORLD resynthesis in `scripts/correct_pitch.py` using `pyworld`.
+
+  * Use `pw.dio` + `pw.stonemask` + `pw.cheaptrick` + `pw.synthesize`.
+  * Interpolate target F0 to WORLD frame times.
+  * Test: `python scripts/correct_pitch.py --vocal data/sep/example/vocal.wav --target_npz data/target/example.npz --output data/corrected/example.wav`
+  * Acceptance: audio file writes, no exceptions.
+
+Integration
+
+* Run full pipeline (fast mode):
+
+  ```
+  python scripts/run_pipeline.py --backing examples/backing.wav --vocal examples/vocal.wav --out results/example_fast.wav --mode fast
+  ```
+* Acceptance: `results/example_fast.wav` exists; listening shows audible vocal present and pitch changes applied (visual F0 plot also acceptable).
+
+---
+
+# 3 — Heuristic target mapping improvements
+
+Objective: make `infer_target_pitch.py` mapping robust and musical.
+
+Tasks
+
+* Fix/resimplify `heuristic_map`:
+
+  * Convert f0 to midi properly; handle unvoiced (leave 0).
+  * Snap to nearest scale degree within ±6 semitones; if multiple candidates pick min cents distance.
+  * Preserve vibrato: compute high-frequency residual (via bandpass or subtract smoothed midi) and keep configurable fraction (e.g., 25–50%).
+  * Smooth final contour with median + lowpass while preserving attack on note onsets.
+* Add CLI flags: `--vibrato_preserve`, `--snap_threshold_cents`.
+* Test cases:
+
+  * Input: short wav with two notes slightly off. Check `data/target/example.npz` shows quantized pitches and residual.
+  * Acceptance: cents shift per voiced frame <= threshold for small corrections; vibrato visible in final f0 plot.
+
+---
+
+# 4 — Preprocessing (denoise, VAD, align)
+
+Objective: make input robust to noise and timing.
+
+Tasks
+
+* Implement denoise via `noisereduce` in `preprocess.py`. Add `--denoise` boolean.
+
+  * Test: run with `--denoise` and confirm energy reduction in background.
+* Implement VAD trim using `librosa.effects.split` + optional `webrtcvad` alternative. Add `--vad`.
+
+  * Test: run with long silent start and ensure silence trimmed.
+* Implement DTW-based alignment for `--align`:
+
+  * Use mel-spectrogram onset correlation or `librosa.sequence.dtw` to compute warp path, then time-warp vocals (librosa.phase_vocoder or rubberband if available).
+  * Add `--max_time_warp` clamp to avoid destructive warp.
+  * Test: create backing with an offset; run `--align` and validate onsets align visually (waveform or onset envelope).
+* Acceptance: Preprocessing should reduce noise and align onsets without creating large artifacts.
+
+---
+
+# 5 — Artifact mitigation & safety checks
+
+Objective: avoid introducing severe artifacts.
+
+Tasks
+
+* Implement artifact detector in `scripts/postprocess.py` or new `scripts/artifact_check.py`:
+
+  * Compute spectral distance (STFT) between original vocal and corrected vocal.
+  * Compute loudness changes, clipping detection, and sudden spectral spikes.
+  * If any metric crosses thresholds, fallback to milder correction (blend original/ corrected).
+* Add conservative/creative slider CLI flag `--correction_strength` (0.0–1.0) to `run_pipeline.py` and pass to `infer_target_pitch.py` (`blend` between original and target f0).
+* Acceptance: when artifact detector triggers, final output should revert to a blend with at most `correction_strength=0.3`.
+
+---
+
+# 6 — Snakemake & batch processing
+
+Objective: make reproducible DAG and enable batch runs.
+
+Tasks
+
+* Validate `Snakefile` references correct paths and that `configs/config.yaml` lists tracks.
+* Add a wrapper script to run snakemake with `--cores` and `--use-conda` if used.
+* Test: `snakemake -s Snakefile -j 2 results/example1.wav`
+* Acceptance: DAG runs end-to-end for the configured example(s).
+
+---
+
+# 7 — Model training pipeline skeleton
+
+Objective: prepare data pipeline, synthetic augmentation, and training loop stubs.
+
+Tasks
+
+* Implement synthetic augmentation module `scripts/data_augment.py`:
+
+  * Take clean vocal stem, randomly shift per-note by ±0–300 cents (per-note and continuous drift), add small vibrato variations, add reverb/noise/bleed.
+  * Output paired (detuned_vocal.wav, target_vocal.wav) and metadata.
+  * Test: run on examples and ensure outputs produced.
+* Implement dataset class for training in `models/pitch_predictor/dataset.py`.
+
+  * Provide mel-spectrogram, F0 target, voiced mask.
+* Implement training script `models/pitch_predictor/train.py` with config-driven hyperparams (use YAML).
+
+  * Add checkpoint saving and validation F0 RMSE logging.
+* Add minimal saved checkpoint (`models/pitch_predictor/dummy.pt`) for production mode to test inference path.
+* Acceptance: training script runs for 1 epoch on toy data without crash and writes a checkpoint.
+
+---
+
+# 8 — Inference & model integration
+
+Objective: plug model into `infer_target_pitch.py` when `--mode model`.
+
+Tasks
+
+* Implement `models/pitch_predictor/predict.py` to:
+
+  * Load checkpoint, extract features from vocal + backing (or only vocal), generate predicted f0 per frame.
+  * Postprocess predicted f0 (smoothing, voicing threshold).
+* Add CLI `--model_ckpt` parameter and test:
+
+  ```
+  python scripts/infer_target_pitch.py --f0_npz data/f0/example.npz --output data/target/example_model.npz --mode model --model_ckpt models/pitch_predictor/dummy.pt
+  ```
+* Acceptance: script returns `target` NPZ and `predict.py` runs without raising.
+
+---
+
+# 9 — Vocoder improvements & HiFi-GAN integration
+
+Objective: enhance timbre and remove WORLD artifacts.
+
+Tasks
+
+* Add optional path in `correct_pitch.py`:
+
+  * WORLD -> compute mel -> HiFi-GAN `.inference` to synthesize waveform
+  * Or feed WORLD spectral envelope into HiFi-GAN if your HiFi-GAN was trained to accept pitch conditioning.
+* Provide `--vocoder` flag: `world` (default) or `hifigan`.
+* Test: compare WORLD-only vs HiFi-GAN outputs.
+* Acceptance: HiFi-GAN path runs (if model available) and produces audio.
+
+---
+
+# 10 — Tests and CI
+
+Objective: ensure stability and regression protection.
+
+Tasks
+
+* Add unit tests in `tests/`:
+
+  * `test_extract_pitch.py`: run `extract_pitch` on small audio and assert NPZ keys exist.
+  * `test_infer_target_pitch.py`: run heuristic map on synthetic f0 and assert output shape.
+  * `test_correct_pitch.py`: run `correct_pitch` with a trivial input and assert no exceptions and output length > 0.
+* Add GitHub Actions workflow `.github/workflows/ci.yml`:
+
+  * Lint, run unit tests, and optionally build Docker.
+* Acceptance: CI runs pass on push and PRs.
+
+---
+
+# 11 — Documentation & developer UX
+
+Objective: make onboarding easy for contributors.
+
+Tasks
+
+* Finish `README.md` with:
+
+  * Quickstart (Docker, example run command).
+  * Overview of pipeline and how to add new tracks.
+  * How to run training and inference.
+* Add `USAGE.md` with detailed CLI reference and sample outputs (F0 plots).
+* Add `configs/` examples for training and inference.
+* Acceptance: another dev can run the pipeline using README without further guidance.
+
+---
+
+# 12 — Optional / nice-to-have features
+
+* Visual F0 editor preview (small Flask app or notebook) to manually tweak contours and re-synthesize.
+* Preset system for genres (pop, classical, jazz).
+* DAW VST wrapper: consider compiling MXTune or creating a LV2 plugin (longer-term).
+* Logging and metrics dashboard (simple CSV/logs of F0 RMSE, artifacts).
+
+---
+
+# Testing checklist (for each track processed)
+
+* [ ] `data/sep/{track}/vocal.wav` exists after separation.
+* [ ] `data/pre/{track}/vocal_pre.wav` exists after preprocess.
+* [ ] `data/f0/{track}.npz` exists with keys `times`, `f0_hz`, `voiced_prob`.
+* [ ] `data/target/{track}.npz` exists and has plausible pitch values (no NaNs).
+* [ ] `data/corrected/{track}/vocal_corrected.wav` exists and is not silent.
+* [ ] `results/{track}.wav` exists and is mixable.
+* [ ] Artifact detector returns OK or an explanation why conservative fallback used.
+
+---
+
+# Acceptance criteria & examples to include in repo
+
+* Include `examples/backing.wav` and `examples/vocal.wav` (short 10–20s) to run end-to-end.
+* Add a Markdown file `TEST_REPORT.md` template for the agent to fill in after a successful run, including: original RMS, corrected RMS, mean pitch shift (cents), F0 RMSE vs synthetic ground truth (if available), artifact flags.
+
+---
+
+# Debugging tips for the agent coder
+
+* Visualize F0: plot `times` vs `f0_hz` (log axis or MIDI) before/after to confirm mapping—this catches alignment and smoothing bugs fast.
+* Use short clips for quick iteration (2–5 seconds).
+* If WORLD fails with segmentation faults, ensure `numpy` and `pyworld` versions match and run inside a clean virtualenv or Docker.
+* For CUDA/NV issues in Docker, test `nvidia-smi` inside container and ensure `--gpus all` used.
+
+---
