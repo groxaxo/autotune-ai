@@ -1,0 +1,35 @@
+# Core audio processing
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.10.0
+numpy>=1.24.0
+
+# Source separation
+demucs>=4.0.0
+
+# Pitch detection and correction
+crepe>=0.0.14
+pyworld>=0.3.2
+
+# Noise reduction and preprocessing
+noisereduce>=3.0.0
+webrtcvad>=2.0.10
+
+# Deep learning
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Loudness normalization
+pyloudnorm>=0.1.0
+
+# Workflow and utilities
+snakemake>=7.32.0
+pyyaml>=6.0
+argparse
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Logging
+coloredlogs>=15.0.1
