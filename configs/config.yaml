@@ -1,0 +1,53 @@
+# Autotune-AI Configuration File
+
+# List of tracks to process (without extension)
+# Place input files in data/input/ as <track>.wav
+tracks:
+  - example1
+  # - example2
+  # - example3
+
+# Audio parameters
+sample_rate: 44100
+
+# Pipeline mode: fast (heuristic) or model (ML-based)
+mode: fast
+
+# Separation parameters
+separation_model: htdemucs  # Options: htdemucs, htdemucs_ft, mdx_extra
+
+# Pitch extraction parameters
+pitch_method: crepe  # Options: crepe, librosa
+
+# Target pitch inference parameters
+root_midi: 60  # Root note (60 = C4)
+scale: major   # Options: major, minor, chromatic
+vibrato_preserve: 0.25  # Fraction of vibrato to preserve (0-1)
+snap_threshold: 0.5  # Maximum distance in semitones to snap
+
+# Vocoder parameters
+vocoder_method: world  # Options: world, psola
+
+# Post-processing parameters
+vocal_gain_db: 0.0
+backing_gain_db: 0.0
+target_lufs: -14.0
+deess: true
+deess_freq: 5000
+
+# Preprocessing flags
+denoise: true
+vad: false
+align: false
+
+# Model parameters (for model mode)
+model_checkpoint: models/checkpoints/best.pt
+
+# Training parameters
+training:
+  train_dir: data/train
+  val_dir: data/val
+  epochs: 100
+  batch_size: 16
+  learning_rate: 0.0001
+  segment_length: 4.0
