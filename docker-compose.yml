@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  autotune-ai:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: autotune-ai:latest
+    container_name: autotune-ai
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount project directory for development
+      - .:/work
+      # Persist uploads and outputs
+      - ./frontend/uploads:/work/frontend/uploads
+      - ./frontend/outputs:/work/frontend/outputs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CUDA_VISIBLE_DEVICES=0  # Use first GPU, set to "" for CPU only
+      - PORT=5000
+      - DEBUG=false
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: python frontend/app.py
+    restart: unless-stopped
+
+  # Optional: Batch processing service
+  autotune-ai-batch:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: autotune-ai:latest
+    container_name: autotune-ai-batch
+    volumes:
+      - .:/work
+      - ./data:/work/data
+      - ./results:/work/results
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # This service is for batch processing with Snakemake
+    # Start it manually with: docker-compose run autotune-ai-batch snakemake -s Snakefile -j 4
+    command: /bin/bash
+    profiles:
+      - batch

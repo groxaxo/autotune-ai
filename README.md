@@ -63,9 +63,54 @@ Autotune-AI is a comprehensive audio pitch correction pipeline designed for Ubun
 
 ### Installation
 
-#### Option 1: Docker (Recommended for Reproducibility)
+#### Option 1: Quick Start Script (Easiest)
 
-Docker ensures consistent environments across systems and includes all dependencies pre-configured.
+The fastest way to get started with the web interface:
+
+```bash
+# Clone the repository
+git clone https://github.com/groxaxo/autotune-ai.git
+cd autotune-ai
+
+# Run the quick start script
+./run_frontend.sh
+```
+
+This script will:
+- Create a virtual environment if needed
+- Install all dependencies
+- Check for GPU availability
+- Start the web server at http://localhost:5000
+
+#### Option 2: Docker Compose (Recommended for Production)
+
+Docker Compose provides the easiest way to run the full stack with GPU support:
+
+```bash
+# Clone the repository
+git clone https://github.com/groxaxo/autotune-ai.git
+cd autotune-ai
+
+# Start the web service with GPU support
+docker-compose up autotune-ai
+
+# Or run in detached mode
+docker-compose up -d autotune-ai
+
+# Access the web interface at http://localhost:5000
+```
+
+For CPU-only systems, edit `docker-compose.yml` and set `CUDA_VISIBLE_DEVICES=""`.
+
+**Batch Processing with Docker Compose:**
+```bash
+# Run batch processing
+docker-compose run autotune-ai-batch snakemake -s Snakefile -j 4
+```
+
+#### Option 3: Docker (Manual)
+
+Build and run the Docker image manually:
 
 ```bash
 # Clone the repository
@@ -75,7 +120,10 @@ cd autotune-ai
 # Build Docker image with GPU support
 docker build -t autotune-ai:latest -f docker/Dockerfile .
 
-# Run container with GPU acceleration
+# Run web interface with GPU acceleration
+docker run --gpus all -p 5000:5000 -it autotune-ai:latest python frontend/app.py
+
+# Or run interactive container for CLI usage
 docker run --gpus all -it -v $(pwd):/work autotune-ai:latest
 
 # Inside container, verify installation
@@ -86,7 +134,7 @@ python -c "import librosa, crepe, pyworld; print('All core libraries imported su
 python examples/quick_test.py
 ```
 
-#### Option 2: Local Installation (For Development)
+#### Option 4: Local Installation (For Development)
 
 **Prerequisites:**
 - Ubuntu 24.04 LTS (or compatible Linux distribution)
