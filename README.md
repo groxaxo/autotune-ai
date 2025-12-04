@@ -10,6 +10,14 @@
 
 Autotune-AI is a comprehensive audio pitch correction pipeline designed for Ubuntu 24.04 with full NVIDIA GPU acceleration. Built from the ground up with modern audio processing libraries and deep learning frameworks, it delivers studio-quality pitch correction for vocals while preserving natural expression and timbre.
 
+## 📖 Documentation
+
+- **[Installation Guide](INSTALLATION.md)** - Comprehensive setup instructions
+- **[Usage Guide](USAGE.md)** - Detailed usage examples and workflows
+- **[Web Frontend Guide](frontend/README.md)** - Web interface documentation
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - Technical architecture details
+
 ## 🌟 Key Features
 
 ### Core Audio Processing
@@ -27,7 +35,9 @@ Autotune-AI is a comprehensive audio pitch correction pipeline designed for Ubun
 - 🔄 **Hybrid Mode**: Blend ML predictions with heuristic approaches for optimal results
 
 ### Production-Ready Infrastructure
+- 🌐 **Web Interface**: Modern Flask-based web UI with real-time progress tracking (**NEW!**)
 - 🐳 **Docker Support**: Pre-configured containerization with NVIDIA GPU runtime
+- 📦 **Docker Compose**: One-command deployment for production environments
 - 🔧 **Workflow Orchestration**: Snakemake-based batch processing with DAG execution
 - ✅ **100% Test Coverage**: 15 comprehensive unit and integration tests (all passing)
 - 🔒 **Security Verified**: CodeQL static analysis with 0 vulnerabilities detected
@@ -997,30 +1007,24 @@ Contributions are welcome! This is an open research project with opportunities f
 - [ ] Streaming pipeline for long audio files
 - [ ] Quantization and optimization for edge devices
 
-### Contribution Guidelines
+### How to Contribute
 
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+- Development setup instructions
+- Coding standards and style guide
+- Testing guidelines
+- Pull request process
+- Areas where we need help
+
+Quick start for contributors:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes with tests
 4. Ensure all tests pass (`pytest tests/ -v`)
-5. Lint your code (`flake8 scripts/ models/`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+5. Lint your code (`flake8 scripts/ models/ --max-line-length=100`)
+6. Submit a pull request
 
-### Development Setup
-
-```bash
-# Clone and install in development mode
-git clone https://github.com/groxaxo/autotune-ai.git
-cd autotune-ai
-pip install -e .
-pip install pytest pytest-cov flake8
-
-# Run tests before committing
-pytest tests/ -v
-flake8 scripts/ models/
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
@@ -1058,7 +1062,10 @@ This project builds upon outstanding work from the research community:
 
 1. **Check Documentation**:
    - [README.md](README.md) - Overview and quick start
+   - [INSTALLATION.md](INSTALLATION.md) - Installation and setup
    - [USAGE.md](USAGE.md) - Detailed usage guide
+   - [frontend/README.md](frontend/README.md) - Web interface guide
+   - [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
    - [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Technical details
 
 2. **Troubleshooting**: Review the [Troubleshooting](#-troubleshooting) section above
