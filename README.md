@@ -88,25 +88,88 @@ python examples/quick_test.py
 
 #### Option 2: Local Installation (For Development)
 
-```bash
-# Install system dependencies
-sudo apt-get update
-sudo apt-get install -y python3.12 python3-pip ffmpeg libsndfile1 libsndfile1-dev
+**Prerequisites:**
+- Ubuntu 24.04 LTS (or compatible Linux distribution)
+- Python 3.12 or higher
+- FFmpeg
+- NVIDIA GPU with CUDA 12.2+ (optional, but recommended for best performance)
 
-# Clone repository
+**Installation Steps:**
+
+```bash
+# 1. Install system dependencies
+sudo apt-get update
+sudo apt-get install -y python3.12 python3-pip python3-venv ffmpeg libsndfile1 libsndfile1-dev
+
+# 2. Clone repository
 git clone https://github.com/groxaxo/autotune-ai.git
 cd autotune-ai
 
-# Install Python dependencies
+# 3. Create and activate virtual environment (recommended)
+python3.12 -m venv venv
+source venv/bin/activate
+
+# 4. Upgrade pip
+pip install --upgrade pip setuptools wheel
+
+# 5. Install Python dependencies
 pip install -r requirements.txt
 
-# Verify installation
+# 6. Verify installation
+python -c "import torch; print('PyTorch installed:', torch.__version__)"
+python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
+python -c "import librosa, crepe, pyworld; print('All core libraries imported successfully')"
+
+# 7. Run tests to verify everything works
 pytest tests/ -v
+```
+
+**Optional: Install CUDA for GPU Acceleration**
+
+If you have an NVIDIA GPU and want GPU acceleration:
+
+```bash
+# Check your GPU
+nvidia-smi
+
+# Install CUDA Toolkit 12.2+ from NVIDIA
+# Follow instructions at: https://developer.nvidia.com/cuda-downloads
+
+# Verify CUDA installation
+nvcc --version
 ```
 
 ### Basic Usage
 
-#### 1️⃣ Process a Single Audio File
+#### 1️⃣ Web Interface (Easiest for Beginners)
+
+**Start the Web Server:**
+
+```bash
+# From the project root
+cd frontend
+python app.py
+
+# Or with Docker
+docker run --gpus all -p 5000:5000 -it autotune-ai:latest python frontend/app.py
+```
+
+**Access the Web Interface:**
+
+Open your browser and navigate to: `http://localhost:5000`
+
+**Features:**
+- 🎨 Modern, user-friendly interface
+- 📤 Drag-and-drop file upload
+- ⚙️ Easy parameter configuration
+- 📊 Real-time progress tracking
+- ⬇️ Direct download of processed audio
+
+See [frontend/README.md](frontend/README.md) for detailed web interface documentation.
+
+#### 2️⃣ Command Line Interface
+
+**Process a Single Audio File**
 
 **With Pre-Separated Stems:**
 ```bash
@@ -136,7 +199,7 @@ python scripts/run_pipeline.py \
     --vibrato_preserve 0.3
 ```
 
-#### 2️⃣ Batch Processing with Snakemake
+#### 3️⃣ Batch Processing with Snakemake
 
 Process multiple tracks in parallel with automatic dependency management:
 
@@ -160,7 +223,7 @@ snakemake -s Snakefile -j 4
 ls -l results/
 ```
 
-#### 3️⃣ Using ML Model (Advanced)
+#### 4️⃣ Using ML Model (Advanced)
 
 Use trained neural network for pitch prediction:
 
@@ -708,6 +771,17 @@ autotune-ai/
 │   ├── quick_test.py           # Quick validation script
 │   └── README.md               # Examples documentation
 │
+├── frontend/                    # Web interface (NEW!)
+│   ├── app.py                  # Flask web server
+│   ├── static/                 # Static assets (CSS, JS)
+│   │   ├── css/style.css      # Stylesheet
+│   │   └── js/main.js         # Frontend JavaScript
+│   ├── templates/              # HTML templates
+│   │   └── index.html         # Main web interface
+│   ├── uploads/                # Uploaded files (created at runtime)
+│   ├── outputs/                # Processed files (created at runtime)
+│   └── README.md              # Frontend documentation
+│
 ├── models/                      # Machine learning models
 │   ├── pitch_predictor/        # Neural pitch prediction
 │   │   ├── model.py            # CNN + Transformer architecture
@@ -864,10 +938,11 @@ Contributions are welcome! This is an open research project with opportunities f
 - [ ] Multi-task learning (pitch + timing + dynamics)
 
 **Integration & Deployment**:
+- [x] Web interface (Flask + HTML/CSS/JS) - **NEW!**
 - [ ] HiFi-GAN or DiffWave vocoder integration
-- [ ] Web interface (Flask/FastAPI + React)
 - [ ] VST/AU plugin for DAW integration
 - [ ] Mobile app support (iOS/Android)
+- [ ] REST API with authentication
 
 **Performance**:
 - [ ] ONNX export for faster inference
