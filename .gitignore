@@ -38,6 +38,10 @@ models/checkpoints/
 !examples/*.wav
 !examples/*.mp3
 
+# Frontend uploads and outputs
+frontend/uploads/
+frontend/outputs/
+
 # IDE
 .vscode/
 .idea/

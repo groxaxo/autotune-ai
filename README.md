@@ -10,6 +10,14 @@
 
 Autotune-AI is a comprehensive audio pitch correction pipeline designed for Ubuntu 24.04 with full NVIDIA GPU acceleration. Built from the ground up with modern audio processing libraries and deep learning frameworks, it delivers studio-quality pitch correction for vocals while preserving natural expression and timbre.
 
+## 📖 Documentation
+
+- **[Installation Guide](INSTALLATION.md)** - Comprehensive setup instructions
+- **[Usage Guide](USAGE.md)** - Detailed usage examples and workflows
+- **[Web Frontend Guide](frontend/README.md)** - Web interface documentation
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - Technical architecture details
+
 ## 🌟 Key Features
 
 ### Core Audio Processing
@@ -27,7 +35,9 @@ Autotune-AI is a comprehensive audio pitch correction pipeline designed for Ubun
 - 🔄 **Hybrid Mode**: Blend ML predictions with heuristic approaches for optimal results
 
 ### Production-Ready Infrastructure
+- 🌐 **Web Interface**: Modern Flask-based web UI with real-time progress tracking (**NEW!**)
 - 🐳 **Docker Support**: Pre-configured containerization with NVIDIA GPU runtime
+- 📦 **Docker Compose**: One-command deployment for production environments
 - 🔧 **Workflow Orchestration**: Snakemake-based batch processing with DAG execution
 - ✅ **100% Test Coverage**: 15 comprehensive unit and integration tests (all passing)
 - 🔒 **Security Verified**: CodeQL static analysis with 0 vulnerabilities detected
@@ -63,9 +73,54 @@ Autotune-AI is a comprehensive audio pitch correction pipeline designed for Ubun
 
 ### Installation
 
-#### Option 1: Docker (Recommended for Reproducibility)
+#### Option 1: Quick Start Script (Easiest)
 
-Docker ensures consistent environments across systems and includes all dependencies pre-configured.
+The fastest way to get started with the web interface:
+
+```bash
+# Clone the repository
+git clone https://github.com/groxaxo/autotune-ai.git
+cd autotune-ai
+
+# Run the quick start script
+./run_frontend.sh
+```
+
+This script will:
+- Create a virtual environment if needed
+- Install all dependencies
+- Check for GPU availability
+- Start the web server at http://localhost:5000
+
+#### Option 2: Docker Compose (Recommended for Production)
+
+Docker Compose provides the easiest way to run the full stack with GPU support:
+
+```bash
+# Clone the repository
+git clone https://github.com/groxaxo/autotune-ai.git
+cd autotune-ai
+
+# Start the web service with GPU support
+docker-compose up autotune-ai
+
+# Or run in detached mode
+docker-compose up -d autotune-ai
+
+# Access the web interface at http://localhost:5000
+```
+
+For CPU-only systems, edit `docker-compose.yml` and set `CUDA_VISIBLE_DEVICES=""`.
+
+**Batch Processing with Docker Compose:**
+```bash
+# Run batch processing
+docker-compose run autotune-ai-batch snakemake -s Snakefile -j 4
+```
+
+#### Option 3: Docker (Manual)
+
+Build and run the Docker image manually:
 
 ```bash
 # Clone the repository
@@ -75,7 +130,10 @@ cd autotune-ai
 # Build Docker image with GPU support
 docker build -t autotune-ai:latest -f docker/Dockerfile .
 
-# Run container with GPU acceleration
+# Run web interface with GPU acceleration
+docker run --gpus all -p 5000:5000 -it autotune-ai:latest python frontend/app.py
+
+# Or run interactive container for CLI usage
 docker run --gpus all -it -v $(pwd):/work autotune-ai:latest
 
 # Inside container, verify installation
@@ -86,27 +144,90 @@ python -c "import librosa, crepe, pyworld; print('All core libraries imported su
 python examples/quick_test.py
 ```
 
-#### Option 2: Local Installation (For Development)
+#### Option 4: Local Installation (For Development)
+
+**Prerequisites:**
+- Ubuntu 24.04 LTS (or compatible Linux distribution)
+- Python 3.12 or higher
+- FFmpeg
+- NVIDIA GPU with CUDA 12.2+ (optional, but recommended for best performance)
+
+**Installation Steps:**
 
 ```bash
-# Install system dependencies
+# 1. Install system dependencies
 sudo apt-get update
-sudo apt-get install -y python3.12 python3-pip ffmpeg libsndfile1 libsndfile1-dev
+sudo apt-get install -y python3.12 python3-pip python3-venv ffmpeg libsndfile1 libsndfile1-dev
 
-# Clone repository
+# 2. Clone repository
 git clone https://github.com/groxaxo/autotune-ai.git
 cd autotune-ai
 
-# Install Python dependencies
+# 3. Create and activate virtual environment (recommended)
+python3.12 -m venv venv
+source venv/bin/activate
+
+# 4. Upgrade pip
+pip install --upgrade pip setuptools wheel
+
+# 5. Install Python dependencies
 pip install -r requirements.txt
 
-# Verify installation
+# 6. Verify installation
+python -c "import torch; print('PyTorch installed:', torch.__version__)"
+python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
+python -c "import librosa, crepe, pyworld; print('All core libraries imported successfully')"
+
+# 7. Run tests to verify everything works
 pytest tests/ -v
+```
+
+**Optional: Install CUDA for GPU Acceleration**
+
+If you have an NVIDIA GPU and want GPU acceleration:
+
+```bash
+# Check your GPU
+nvidia-smi
+
+# Install CUDA Toolkit 12.2+ from NVIDIA
+# Follow instructions at: https://developer.nvidia.com/cuda-downloads
+
+# Verify CUDA installation
+nvcc --version
 ```
 
 ### Basic Usage
 
-#### 1️⃣ Process a Single Audio File
+#### 1️⃣ Web Interface (Easiest for Beginners)
+
+**Start the Web Server:**
+
+```bash
+# From the project root
+cd frontend
+python app.py
+
+# Or with Docker
+docker run --gpus all -p 5000:5000 -it autotune-ai:latest python frontend/app.py
+```
+
+**Access the Web Interface:**
+
+Open your browser and navigate to: `http://localhost:5000`
+
+**Features:**
+- 🎨 Modern, user-friendly interface
+- 📤 Drag-and-drop file upload
+- ⚙️ Easy parameter configuration
+- 📊 Real-time progress tracking
+- ⬇️ Direct download of processed audio
+
+See [frontend/README.md](frontend/README.md) for detailed web interface documentation.
+
+#### 2️⃣ Command Line Interface
+
+**Process a Single Audio File**
 
 **With Pre-Separated Stems:**
 ```bash
@@ -136,7 +257,7 @@ python scripts/run_pipeline.py \
     --vibrato_preserve 0.3
 ```
 
-#### 2️⃣ Batch Processing with Snakemake
+#### 3️⃣ Batch Processing with Snakemake
 
 Process multiple tracks in parallel with automatic dependency management:
 
@@ -160,7 +281,7 @@ snakemake -s Snakefile -j 4
 ls -l results/
 ```
 
-#### 3️⃣ Using ML Model (Advanced)
+#### 4️⃣ Using ML Model (Advanced)
 
 Use trained neural network for pitch prediction:
 
@@ -708,6 +829,17 @@ autotune-ai/
 │   ├── quick_test.py           # Quick validation script
 │   └── README.md               # Examples documentation
 │
+├── frontend/                    # Web interface (NEW!)
+│   ├── app.py                  # Flask web server
+│   ├── static/                 # Static assets (CSS, JS)
+│   │   ├── css/style.css      # Stylesheet
+│   │   └── js/main.js         # Frontend JavaScript
+│   ├── templates/              # HTML templates
+│   │   └── index.html         # Main web interface
+│   ├── uploads/                # Uploaded files (created at runtime)
+│   ├── outputs/                # Processed files (created at runtime)
+│   └── README.md              # Frontend documentation
+│
 ├── models/                      # Machine learning models
 │   ├── pitch_predictor/        # Neural pitch prediction
 │   │   ├── model.py            # CNN + Transformer architecture
@@ -864,40 +996,35 @@ Contributions are welcome! This is an open research project with opportunities f
 - [ ] Multi-task learning (pitch + timing + dynamics)
 
 **Integration & Deployment**:
+- [x] Web interface (Flask + HTML/CSS/JS) - **NEW!**
 - [ ] HiFi-GAN or DiffWave vocoder integration
-- [ ] Web interface (Flask/FastAPI + React)
 - [ ] VST/AU plugin for DAW integration
 - [ ] Mobile app support (iOS/Android)
+- [ ] REST API with authentication
 
 **Performance**:
 - [ ] ONNX export for faster inference
 - [ ] Streaming pipeline for long audio files
 - [ ] Quantization and optimization for edge devices
 
-### Contribution Guidelines
+### How to Contribute
 
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+- Development setup instructions
+- Coding standards and style guide
+- Testing guidelines
+- Pull request process
+- Areas where we need help
+
+Quick start for contributors:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes with tests
 4. Ensure all tests pass (`pytest tests/ -v`)
-5. Lint your code (`flake8 scripts/ models/`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+5. Lint your code (`flake8 scripts/ models/ --max-line-length=100`)
+6. Submit a pull request
 
-### Development Setup
-
-```bash
-# Clone and install in development mode
-git clone https://github.com/groxaxo/autotune-ai.git
-cd autotune-ai
-pip install -e .
-pip install pytest pytest-cov flake8
-
-# Run tests before committing
-pytest tests/ -v
-flake8 scripts/ models/
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
@@ -935,7 +1062,10 @@ This project builds upon outstanding work from the research community:
 
 1. **Check Documentation**:
    - [README.md](README.md) - Overview and quick start
+   - [INSTALLATION.md](INSTALLATION.md) - Installation and setup
    - [USAGE.md](USAGE.md) - Detailed usage guide
+   - [frontend/README.md](frontend/README.md) - Web interface guide
+   - [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
    - [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Technical details
 
 2. **Troubleshooting**: Review the [Troubleshooting](#-troubleshooting) section above

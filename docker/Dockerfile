@@ -38,5 +38,11 @@ COPY . /work/
 # Set Python path
 ENV PYTHONPATH=/work:$PYTHONPATH
 
-# Default command
+# Create directories for frontend
+RUN mkdir -p /work/frontend/uploads /work/frontend/outputs
+
+# Expose port for web interface
+EXPOSE 5000
+
+# Default command (can be overridden)
 CMD ["/bin/bash"]
