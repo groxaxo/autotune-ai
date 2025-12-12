@@ -1,5 +1,4 @@
 """Smoke tests for pipeline."""
-import subprocess
 from pathlib import Path
 
 
