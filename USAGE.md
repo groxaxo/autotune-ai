@@ -174,6 +174,8 @@ python scripts/infer_target_pitch.py \
 - `--snap_threshold`: Max snap distance in semitones
 - `--model_ckpt`: Model checkpoint (for model mode)
 
+**Note**: model mode currently falls back to fast heuristic mode — model inference is not yet implemented.
+
 **MIDI Note Reference:**
 ```
 C4 = 60  (Middle C)
