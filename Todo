@@ -6,8 +6,11 @@ Here's a clear, actionable TODO list your coding agent can follow. Each item inc
 
 1. **Make the fast pipeline end-to-end (MVP).**
 2. **Add robustness: denoise, VAD, alignment, artifact checks.**
-3. **Add model training/inference stubs and dataset augmentation.**
+3. **ML model mode: planned but not yet implemented.**
 4. **CI, Docker, Snakemake integration, tests, and docs.**
+
+ML model mode is planned but not yet implemented.
+Pending components include dataset, training loop, inference module, and integration with pipeline.
 
 ---
 
@@ -144,44 +147,23 @@ Tasks
 
 ---
 
-# 7 — Model training pipeline skeleton
+# 7 — Model training pipeline (PLANNED - NOT YET IMPLEMENTED)
 
-Objective: prepare data pipeline, synthetic augmentation, and training loop stubs.
-
-Tasks
-
-* Implement synthetic augmentation module `scripts/data_augment.py`:
-
-  * Take clean vocal stem, randomly shift per-note by ±0–300 cents (per-note and continuous drift), add small vibrato variations, add reverb/noise/bleed.
-  * Output paired (detuned_vocal.wav, target_vocal.wav) and metadata.
-  * Test: run on examples and ensure outputs produced.
-* Implement dataset class for training in `models/pitch_predictor/dataset.py`.
-
-  * Provide mel-spectrogram, F0 target, voiced mask.
-* Implement training script `models/pitch_predictor/train.py` with config-driven hyperparams (use YAML).
-
-  * Add checkpoint saving and validation F0 RMSE logging.
-* Add minimal saved checkpoint (`models/pitch_predictor/dummy.pt`) for production mode to test inference path.
-* Acceptance: training script runs for 1 epoch on toy data without crash and writes a checkpoint.
+ML model mode is planned but not yet implemented.
+Pending components include:
+- Dataset preparation and augmentation module
+- Model architecture definition (models/pitch_predictor/)
+- Training loop with checkpointing
+- Inference integration with pipeline
+- Validation and testing infrastructure
 
 ---
 
-# 8 — Inference & model integration
+# 8 — Inference & model integration (PLANNED - NOT YET IMPLEMENTED)
 
-Objective: plug model into `infer_target_pitch.py` when `--mode model`.
-
-Tasks
-
-* Implement `models/pitch_predictor/predict.py` to:
-
-  * Load checkpoint, extract features from vocal + backing (or only vocal), generate predicted f0 per frame.
-  * Postprocess predicted f0 (smoothing, voicing threshold).
-* Add CLI `--model_ckpt` parameter and test:
-
-  ```
-  python scripts/infer_target_pitch.py --f0_npz data/f0/example.npz --output data/target/example_model.npz --mode model --model_ckpt models/pitch_predictor/dummy.pt
-  ```
-* Acceptance: script returns `target` NPZ and `predict.py` runs without raising.
+ML model inference is planned but not yet implemented.
+The `--mode model` parameter exists but currently falls back to heuristic mode.
+Pending implementation of models/pitch_predictor/predict.py and integration.
 
 ---
 

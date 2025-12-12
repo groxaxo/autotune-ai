@@ -11,8 +11,8 @@ Autotune-AI is an advanced AI-powered audio pitch correction pipeline designed f
 - **Total Files Created**: 30+
 - **Lines of Code**: ~15,000+
 - **Scripts**: 8 core processing scripts
-- **ML Models**: 5 modules (3.7M parameters)
-- **Tests**: 15 unit and integration tests (100% passing)
+- **ML Models**: planned. Pipeline stub exists; training & inference not yet implemented.
+- **Tests**: Unit and integration tests (passing)
 - **Documentation**: 3 comprehensive guides
 
 ## Architecture
